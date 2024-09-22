@@ -19,18 +19,19 @@ export default async function handler(req, res) {
         console.log('Repository Name:', repoName);
 
         try {
-            // Format column_values as an object and then stringify it to avoid GraphQL parsing issues
-            const columnValues = {
+            // Prepare the column values as a proper JSON string without extra escape characters
+            const columnValues = JSON.stringify({
                 text4__1: developerName,
                 text__1: commitMessage,
                 date4: commitDate,
-                text8__1: repoName
-            };
+                text8__1: repoName,
+            });
 
+            // Send the extracted commit data to monday.com using their API
             const response = await fetch('https://api.monday.com/v2', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQxMzc0NDI4MSwiYWFpIjoxMSwidWlkIjo2MDkzMDEyMywiaWFkIjoiMjAyNC0wOS0yMVQwODo1NToyNC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6ODcxMjM4MSwicmduIjoidXNlMSJ9.TS5QXrhhyI4zXSnc56XItuytJ-iklPrVB6TDF-MBdM0`,  // Replace with your API token
+                    'Authorization': `Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQxMzc0NDI4MSwiYWFpIjoxMSwidWlkIjo2MDkzMDEyMywiaWFkIjoiMjAyNC0wOS0yMVQwODo1NToyNC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6ODcxMjM4MSwicmduIjoidXNlMSJ9.TS5QXrhhyI4zXSnc56XItuytJ-iklPrVB6TDF-MBdM0`,  // Replace with your API key
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
@@ -39,7 +40,7 @@ export default async function handler(req, res) {
                             create_item (
                                 board_id: 7452641398,  // Your board ID
                                 item_name: "${developerName}",  // The developer's name as the item name in the monday.com board
-                                column_values: "${JSON.stringify(columnValues).replace(/"/g, '\\"')}"  // Properly escape JSON string
+                                column_values: ${JSON.stringify(columnValues)}
                             ) {
                                 id
                             }
