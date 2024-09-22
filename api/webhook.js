@@ -23,7 +23,7 @@ export default async function handler(req, res) {
       const response = await fetch('https://api.monday.com/v2', {
           method: 'POST',  // The monday.com API requires POST requests
           headers: {
-              'Authorization': 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQxMzc0NDI4MSwiYWFpIjoxMSwidWlkIjo2MDkzMDEyMywiaWFkIjoiMjAyNC0wOS0yMVQwODo1NToyNC41MTFaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6ODcxMjM4MSwicmduIjoidXNlMSJ9.vj6OKWxJIfimGj983JcXX3Ow1l2ttcrZ1tZ92RxQDJs',  // Replace with your real monday.com API token
+              'Authorization': 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQxMzc0NDI4MSwiYWFpIjoxMSwidWlkIjo2MDkzMDEyMywiaWFkIjoiMjAyNC0wOS0yMVQwODo1NToyNC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6ODcxMjM4MSwicmduIjoidXNlMSJ9.TS5QXrhhyI4zXSnc56XItuytJ-iklPrVB6TDF-MBdM0',  // Replace with your real monday.com API token
               'Content-Type': 'application/json',  // Set content-type to JSON
           },
           body: JSON.stringify({  // Prepare the GraphQL mutation query to send the data to monday.com
