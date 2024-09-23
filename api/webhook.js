@@ -1,60 +1,69 @@
+// api/github-commit.js
 export default async function handler(req, res) {
-    if (req.method === 'POST') {  
-        console.log('GitHub Webhook Payload:', req.body);  // Log the GitHub webhook payload for debugging
-    
-        // Safely extract necessary properties from the webhook payload
-        const head_commit = req.body?.head_commit || {};
-        const repository = req.body?.repository || {};
+    if (req.method === 'POST') {
+      const commitData = req.body;
   
-        // Extract commit information safely
-        const commitMessage = head_commit.message || 'No commit message';   // Get the commit message
-        const commitDate = head_commit.timestamp || new Date().toISOString(); // Get the commit date or fallback to current date
-        const developerName = head_commit.author?.name || 'Unknown Developer';  // Get the developer's name or set to 'Unknown'
-        const repoName = repository.name || 'Unknown Repo';  // Get the name of the repository or set to 'Unknown'
+      // Validate if this is a push event, if not, exit
+      if (!commitData.ref || !commitData.commits) {
+        return res.status(400).json({ error: 'Not a valid push event' });
+      }
   
-        // Log extracted values for debugging
-        console.log('Commit Message:', commitMessage);
-        console.log('Commit Date:', commitDate);
-        console.log('Developer Name:', developerName);
-        console.log('Repository Name:', repoName);
+      // Extract the necessary commit information
+      const commits = commitData.commits.map(commit => ({
+        message: commit.message,
+        author: commit.author.name,
+        url: commit.url,
+        timestamp: commit.timestamp,
+        repository: commitData.repository.name, // Get the repository name
+      }));
   
-        try {
-            // Send the extracted commit data to monday.com using their API
-            const response = await fetch('https://api.monday.com/v2', {
-                method: 'POST',
-                headers: {
-                    // Using the provided API token
-                    'Authorization': `Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQxMzc0NDI4MSwiYWFpIjoxMSwidWlkIjo2MDkzMDEyMywiaWFkIjoiMjAyNC0wOS0yMVQwODo1NToyNC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6ODcxMjM4MSwicmduIjoidXNlMSJ9.TS5QXrhhyI4zXSnc56XItuytJ-iklPrVB6TDF-MBdM0`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    query: `
-                        mutation {
-                            create_item (
-                                board_id: 7452641398,  // Use the provided monday.com board ID
-                                item_name: "${developerName}",  // The developer's name will be the item name in the monday.com board
-                                column_values: "{\"text4__1\": \"${developerName.replace(/"/g, '\\"')}\", \"text__1\": \"${commitMessage.replace(/"/g, '\\"')}\", \"date4\": \"${commitDate}\", \"text8__1\": \"${repoName.replace(/"/g, '\\"')}\"}"
-                            ) {
-                                id
-                            }
-                        }
-                    `,
-                }),
-            });
-            const result = await response.json();  // Parse the JSON response
-            console.log('Response from Monday.com:', result);  // Log response for debugging
-            if (response.ok) {
-                res.status(200).json({ message: 'Commit data sent to monday.com' });
-            } else {
-                console.error('Error from Monday.com:', result);
-                res.status(500).json({ message: `Error sending data to monday.com: ${result.errors ? result.errors[0].message : 'Unknown error'}` });
-            }
-        } catch (error) {
-            console.error('Failed to send data to Monday.com:', error);
-            res.status(500).json({ message: 'Failed to send data to monday.com', error: error.message });
-        }
+      // Send the commits to Monday.com
+      try {
+        const mondayResult = await sendCommitsToMonday(commits);
+        res.status(200).json({ success: true, data: mondayResult });
+      } catch (error) {
+        console.error('Error sending data to Monday.com:', error);
+        res.status(500).json({ error: 'Failed to send data to Monday.com' });
+      }
     } else {
-        res.status(405).json({ message: 'Only POST requests are allowed' });
+      res.status(405).json({ message: 'Only POST requests are accepted' });
     }
   }
-
+  
+  // Function to send commits data to Monday.com
+  async function sendCommitsToMonday(commits) {
+    const mondayApiUrl = 'https://api.monday.com/v2';
+    const mondayApiKey = process.env.MONDAY_API_KEY;
+    const boardId = process.env.MONDAY_BOARD_ID;
+  
+    const results = [];
+  
+    // Loop through each commit and send it as an item to the Monday.com board
+    for (const commit of commits) {
+      const query = `
+        mutation {
+          create_item (
+            board_id: ${boardId},
+            item_name: "${commit.message}",
+            column_values: "{\\"author\\": \\"${commit.author}\\", \\"commit_url\\": \\"${commit.url}\\", \\"timestamp\\": \\"${commit.timestamp}\\", \\"repository\\": \\"${commit.repository}\\"}"
+          ) {
+            id
+          }
+        }
+      `;
+  
+      const response = await fetch(mondayApiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${mondayApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      });
+  
+      const result = await response.json();
+      results.push(result);
+    }
+  
+    return results;
+  }
