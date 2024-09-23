@@ -45,7 +45,7 @@ export default async function handler(req, res) {
           create_item (
             board_id: ${boardId},
             item_name: "${commit.message}",
-            column_values: "{\\"author\\": \\"${commit.author}\\", \\"commit_url\\": \\"${commit.url}\\", \\"timestamp\\": \\"${commit.timestamp}\\", \\"repository\\": \\"${commit.repository}\\"}"
+            column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"commit_url\\": \\"${commit.url}\\", \\"timestamp\\": \\"${commit.timestamp}\\", \\"repository\\": \\"${commit.repository}\\"}"
           ) {
             id
           }
