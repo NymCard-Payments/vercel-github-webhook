@@ -33,7 +33,7 @@ export default async function handler(req, res) {
   // Function to send commits data to Monday.com
   async function sendCommitsToMonday(commits) {
     const mondayApiUrl = 'https://api.monday.com/v2';
-    const mondayApiKey = process.env.MONDAY_API_KEY;
+    const mondayApiKey = process.env.MONDAY_API_TOKEN;
     const boardId = process.env.MONDAY_BOARD_ID;
   
     const results = [];
