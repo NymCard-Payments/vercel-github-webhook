@@ -19,11 +19,11 @@ export default async function handler(req, res) {
         console.log('Repository Name:', repoName);
 
         try {
-            // Create simplified column values as an object
-            const columnValues = {
+            // Create simplified column values as a stringified JSON object
+            const columnValues = JSON.stringify({
                 text4__1: developerName,  // Developer Name column
                 text__1: commitMessage,   // Commit Message column
-            };
+            });
 
             console.log('Sending the following data to Monday.com:', columnValues);
 
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
             const response = await fetch('https://api.monday.com/v2', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQxMzc0NDI4MSwiYWFpIjoxMSwidWlkIjo2MDkzMDEyMywiaWFkIjoiMjAyNC0wOS0yMVQwODo1NToyNC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6ODcxMjM4MSwicmduIjoidXNlMSJ9.TS5QXrhhyI4zXSnc56XItuytJ-iklPrVB6TDF-MBdM0                    `,  // Replace with your API token
+                    'Authorization': `Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQxMzc0NDI4MSwiYWFpIjoxMSwidWlkIjo2MDkzMDEyMywiaWFkIjoiMjAyNC0wOS0yMVQwODo1NToyNC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6ODcxMjM4MSwicmduIjoidXNlMSJ9.TS5QXrhhyI4zXSnc56XItuytJ-iklPrVB6TDF-MBdM0`,  // Replace with your API token
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
                             create_item (
                                 board_id: 7452641398,  // Replace with your board ID
                                 item_name: "${developerName}",  // The developer's name as the item name in Monday.com board
-                                column_values: ${JSON.stringify(columnValues)}  // Passing as JSON object
+                                column_values: "${columnValues}"  // Properly formatted string for column_values
                             ) {
                                 id
                             }
