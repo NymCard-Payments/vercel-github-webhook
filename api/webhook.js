@@ -19,7 +19,7 @@ export default async function handler(req, res) {
         console.log('Repository Name:', repoName);
 
         try {
-            // Create simplified column values to send to Monday.com
+            // Create simplified column values as an object
             const columnValues = {
                 text4__1: developerName,  // Developer Name column
                 text__1: commitMessage,   // Commit Message column
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
                             create_item (
                                 board_id: 7452641398,  // Replace with your board ID
                                 item_name: "${developerName}",  // The developer's name as the item name in Monday.com board
-                                column_values: "${JSON.stringify(columnValues).replace(/"/g, '\\"')}"  // Properly escape JSON string
+                                column_values: ${JSON.stringify(columnValues)}  // Passing as JSON object
                             ) {
                                 id
                             }
