@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
     if (req.method === 'POST') {
-        console.log('GitHub Webhook Payload:', req.body);  // Log the GitHub webhook payload for debugging
+        console.log('GitHub Webhook Payload:', JSON.stringify(req.body, null, 2));  // Log the GitHub webhook payload for debugging
 
         // Safely extract necessary properties from the webhook payload
         const head_commit = req.body?.head_commit || {};
@@ -19,50 +19,49 @@ export default async function handler(req, res) {
         console.log('Repository Name:', repoName);
 
         try {
-            // Format column_values as an object and then stringify it for GraphQL
-            const columnValues = JSON.stringify({
-                text4__1: developerName,
-                text__1: commitMessage,
-                date4: commitDate,
-                text8__1: repoName
-            });
+            // Create simplified column values to send to Monday.com
+            const columnValues = {
+                text4__1: developerName,  // Developer Name column
+                text__1: commitMessage,   // Commit Message column
+            };
 
-            // Prepare the GraphQL query
-            const query = `
-                mutation {
-                    create_item (
-                        board_id: 7452641398,  // Your board ID
-                        item_name: "${developerName}",  // The developer's name as the item name in the monday.com board
-                        column_values: ${JSON.stringify(columnValues)}
-                    ) {
-                        id
-                    }
-                }
-            `;
+            console.log('Sending the following data to Monday.com:', columnValues);
 
-            // Make the POST request to Monday.com API
+            // Send the request to Monday.com
             const response = await fetch('https://api.monday.com/v2', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQxMzc0NDI4MSwiYWFpIjoxMSwidWlkIjo2MDkzMDEyMywiaWFkIjoiMjAyNC0wOS0yMVQwODo1NToyNC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6ODcxMjM4MSwicmduIjoidXNlMSJ9.TS5QXrhhyI4zXSnc56XItuytJ-iklPrVB6TDF-MBdM0`,  // Replace with your API token
+                    'Authorization': `Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQxMzc0NDI4MSwiYWFpIjoxMSwidWlkIjo2MDkzMDEyMywiaWFkIjoiMjAyNC0wOS0yMVQwODo1NToyNC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6ODcxMjM4MSwicmduIjoidXNlMSJ9.TS5QXrhhyI4zXSnc56XItuytJ-iklPrVB6TDF-MBdM0                    `,  // Replace with your API token
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ query }),
+                body: JSON.stringify({
+                    query: `
+                        mutation {
+                            create_item (
+                                board_id: 7452641398,  // Replace with your board ID
+                                item_name: "${developerName}",  // The developer's name as the item name in Monday.com board
+                                column_values: "${JSON.stringify(columnValues).replace(/"/g, '\\"')}"  // Properly escape JSON string
+                            ) {
+                                id
+                            }
+                        }
+                    `,
+                }),
             });
 
             const result = await response.json();  // Parse the JSON response
             console.log('Response from Monday.com:', result);  // Log response for debugging
 
             if (response.ok) {
-                res.status(200).json({ message: 'Commit data sent to monday.com' });
+                res.status(200).json({ message: 'Commit data sent to Monday.com' });
             } else {
                 console.error('Error from Monday.com:', result);
-                res.status(500).json({ message: `Error sending data to monday.com: ${result.errors ? result.errors[0].message : 'Unknown error'}` });
+                res.status(500).json({ message: `Error sending data to Monday.com: ${result.errors ? result.errors[0].message : 'Unknown error'}` });
             }
 
         } catch (error) {
             console.error('Failed to send data to Monday.com:', error);
-            res.status(500).json({ message: 'Failed to send data to monday.com', error: error.message });
+            res.status(500).json({ message: 'Failed to send data to Monday.com', error: error.message });
         }
     } else {
         res.status(405).json({ message: 'Only POST requests are allowed' });
