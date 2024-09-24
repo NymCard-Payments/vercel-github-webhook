@@ -44,7 +44,13 @@ export default async function handler(req, res) {
     for (const commit of commits) {
 
       
-      const formattedTimestamp = commit.timestamp.split('T')[0];
+       // Extract the date and time parts
+      const dateObj = new Date(commit.timestamp);
+
+      // Format the date as "DD MMM, HH:MM AM/PM YYYY"
+      const options = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
+      const formattedDateTime = dateObj.toLocaleString('en-US', options); // Example output: "23 Sep, 10:29 AM 2023"
+  
 
 
       
