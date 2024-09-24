@@ -43,8 +43,8 @@ export default async function handler(req, res) {
     // Loop through each commit and send it as an item to the Monday.com board
     for (const commit of commits) {
 
-      const formattedTimestamp = `${commit.timestamp.split('T')[0]} ${commit.timestamp.split('T')[1].split('.')[0]}`; // Date and time: YYYY-MM-DD HH:MM:SS
-
+      const datePart = commit.timestamp.split('T')[0];
+      const timePart = commit.timestamp.split('T')[1].split('.')[0];  
 
 
       
