@@ -42,14 +42,13 @@ export default async function handler(req, res) {
   
     // Loop through each commit and send it as an item to the Monday.com board
     for (const commit of commits) {
-      const formattedTimestamp = commit.timestamp.replace('T', ' ').replace('Z', ''); // Formats to YYYY-MM-DD HH:MM:SS
       
       const query = `
         mutation {
           create_item (
             board_id: ${boardId},
             item_name: "${commit.message}",
-            column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\"}"
+            column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text__1\\": \\"${commit.url}\\", \\"text5__1\\": \\"${commit.timestamp}\\", \\"text8__1\\": \\"${commit.repository}\\"}"
           ) {
             id
           }
