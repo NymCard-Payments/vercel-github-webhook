@@ -43,7 +43,8 @@ export default async function handler(req, res) {
     // Loop through each commit and send it as an item to the Monday.com board
     for (const commit of commits) {
 
-      const formattedTimestamp = commit.timestamp; 
+      const formattedTimestamp = commit.timestamp.split('T')[0]; // Only date: YYYY-MM-DD
+
       
       const query = `
         mutation {
