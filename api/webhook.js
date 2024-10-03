@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     const commits = commitData.commits.map(commit => ({
       message: commit.message,
       author: commit.author.name,
-      email: commit.author.email,
+      email:  commit.author.email,
       url: commit.url,
       timestamp: commit.timestamp,
       repository: commitData.repository.name, // Get the repository name
@@ -50,7 +50,7 @@ async function sendCommitsToMonday(commits) {
         create_item (
           board_id: ${boardId},
           item_name: "${commit.message}",
-          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\", \\"email36__1\\": \\"${commit.email}\\"}"  // Update column for email
+          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"email36__1"\\: \\"${commit.email}\\",\\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\"}"
         ) {
           id
         }
