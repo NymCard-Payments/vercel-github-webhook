@@ -50,7 +50,7 @@ async function sendCommitsToMonday(commits) {
         create_item (
           board_id: ${boardId},
           item_name: "${commit.message}",
-          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\"}"
+          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text0_1\\": \\"${commit.email}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\"}"
         ) {
           id
         }
