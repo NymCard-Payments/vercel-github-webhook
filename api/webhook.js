@@ -8,15 +8,20 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Not a valid push event' });
     }
 
-    // Extract the necessary commit information
-    const commits = commitData.commits.map(commit => ({
-      message: commit.message,
-      author: commit.author.name,
-      email: commit.author.email || 'No email provided', // Get author email if available
-      url: commit.url,
-      timestamp: commit.timestamp,
-      repository: commitData.repository.name, // Get the repository name
-    }));
+    // Prepare to collect detailed commit info with email using GitHub API
+    const commits = await Promise.all(
+      commitData.commits.map(async commit => {
+        const detailedCommit = await fetchCommitDetails(commit.url);
+        return {
+          message: commit.message,
+          author: commit.author.name,
+          email: detailedCommit.author.email || 'No email provided', // Get author email from the detailed commit info
+          url: commit.url,
+          timestamp: commit.timestamp,
+          repository: commitData.repository.name, // Get the repository name
+        };
+      })
+    );
 
     // Send the commits to Monday.com
     try {
@@ -29,6 +34,25 @@ export default async function handler(req, res) {
   } else {
     res.status(405).json({ message: 'Only POST requests are accepted' });
   }
+}
+
+// Function to fetch detailed commit information from GitHub API
+async function fetchCommitDetails(commitUrl) {
+  const githubApiToken = process.env.GITHUB_API_TOKEN;
+
+  const response = await fetch(commitUrl, {
+    headers: {
+      Authorization: `Bearer ${githubApiToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch commit details from GitHub');
+  }
+
+  const commitDetails = await response.json();
+  return commitDetails;
 }
 
 // Function to send commits data to Monday.com
@@ -50,7 +74,7 @@ async function sendCommitsToMonday(commits) {
         create_item (
           board_id: ${boardId},
           item_name: "${commit.message}",
-          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text0_1\\": \\"${commit.email}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\"}"
+          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text0__1\\": \\"${commit.email}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\"}"
         ) {
           id
         }
