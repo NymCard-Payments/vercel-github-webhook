@@ -1,4 +1,3 @@
-// api/github-commit.js
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     const commitData = req.body;
@@ -8,14 +7,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Not a valid push event' });
     }
 
-    // Extract the necessary commit information
-    const commits = commitData.commits.map(commit => ({
-      message: commit.message,
-      author: commit.author.name,
-      url: commit.url,
-      timestamp: commit.timestamp,
-      repository: commitData.repository.name, // Get the repository name
-    }));
+    // Extract the necessary commit information and filter out Devtools-related commits
+    const commits = commitData.commits
+      .filter(commit => commitData.repository.name !== 'Devtools') // Filter commits from Devtools repo
+      .map(commit => ({
+        message: commit.message,
+        author: commit.author.name,
+        url: commit.url,
+        timestamp: commit.timestamp,
+        repository: commitData.repository.name, // Get the repository name
+      }));
+
+    // If no commits remain after filtering, skip sending to Monday.com
+    if (commits.length === 0) {
+      return res.status(200).json({ message: 'No valid commits to process' });
+    }
 
     // Send the commits to Monday.com
     try {
