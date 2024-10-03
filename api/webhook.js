@@ -1,4 +1,4 @@
-
+// api/github-commit.js
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     const commitData = req.body;
@@ -44,9 +44,6 @@ async function sendCommitsToMonday(commits) {
     // Format timestamp to only include date (e.g., 2023-10-03)
     const formattedTimestamp = commit.timestamp.split('T')[0];
 
-    // Log the commit data for debugging
-    console.log('Sending commit:', commit);
-
     // GraphQL mutation query to create an item on the Monday.com board
     const query = `
       mutation {
@@ -60,9 +57,6 @@ async function sendCommitsToMonday(commits) {
       }
     `;
 
-    // Log the query before sending it
-    console.log('Sending query:', query);
-
     // Send the request to the Monday.com API
     const response = await fetch(mondayApiUrl, {
       method: 'POST',
@@ -73,16 +67,8 @@ async function sendCommitsToMonday(commits) {
       body: JSON.stringify({ query }),
     });
 
-    // Handle the API response
+    // Handle the API response and store the result
     const result = await response.json();
-
-    // Log the result from Monday.com API
-    if (result.errors) {
-      console.error('GraphQL errors:', result.errors);
-    } else {
-      console.log('Success:', result.data);
-    }
-
     results.push(result);
   }
 
