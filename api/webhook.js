@@ -18,14 +18,19 @@ export default async function handler(req, res) {
         repository: commitData.repository.name, // Get the repository name
       }));
 
+    // Sort all commits by timestamp and select only the latest 10
+    const latestCommits = commits
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) // Sort by timestamp (newest first)
+    .slice(0, 10); // Get the latest 10 commits
+
     // If no commits remain after filtering, skip sending to Monday.com
-    if (commits.length === 0) {
+    if (lastestcommits.length === 0) {
       return res.status(200).json({ message: 'No valid commits to process' });
     }
 
     // Send the commits to Monday.com
     try {
-      const mondayResult = await sendCommitsToMonday(commits);
+      const mondayResult = await sendCommitsToMonday(latestCommits);
       res.status(200).json({ success: true, data: mondayResult });
     } catch (error) {
       console.error('Error sending data to Monday.com:', error);
