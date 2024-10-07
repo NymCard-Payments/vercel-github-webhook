@@ -23,6 +23,9 @@ export default async function handler(req, res) {
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) // Sort by timestamp (newest first)
     .slice(0, 10); // Get the latest 10 commits
 
+    // Log the sorted and sliced commits for debugging
+    console.log('Latest 10 commits:', latestCommits);
+
     // If no commits remain after filtering, skip sending to Monday.com
     if (lastestcommits.length === 0) {
       return res.status(200).json({ message: 'No valid commits to process' });
@@ -77,8 +80,13 @@ async function sendCommitsToMonday(commits) {
       body: JSON.stringify({ query }),
     });
 
+
     // Handle the API response and store the result
     const result = await response.json();
+
+    // Log the response from Monday.com for debugging
+    console.log('Monday.com API response:', result);
+
     results.push(result);
   }
 
