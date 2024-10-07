@@ -12,6 +12,7 @@ export default async function handler(req, res) {
       .filter(commit => commitData.repository.name !== 'Devtools') // Filter commits from Devtools repo
       .map(commit => ({
         message: commit.message,
+        username: commit.author.username || commit.author.name,
         author: commit.author.name,
         url: commit.url,
         timestamp: commit.timestamp,
@@ -55,7 +56,7 @@ async function sendCommitsToMonday(commits) {
         create_item (
           board_id: ${boardId},
           item_name: "${commit.message}",
-          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\"}"
+          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text6__1\\": \\"${commit.username}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\"}"
         ) {
           id
         }
