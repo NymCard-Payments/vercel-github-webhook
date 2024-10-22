@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
     // Extract the necessary commit information and filter out Devtools-related commits
     const commits = commitData.commits
-      .filter(commit => commitData.repository.name !== 'Devtools') // Filter commits from Devtools repo
+      .filter(commit => commit.author.username !== 'Devtools') // Filter commits from Devtools repo
       .map(commit => ({
         message: commit.message,
         username: commit.author.username || commit.author.name,
