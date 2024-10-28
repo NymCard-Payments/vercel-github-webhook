@@ -17,6 +17,9 @@ export default async function handler(req, res) {
         url: commit.url,
         timestamp: commit.timestamp,
         repository: commitData.repository.name, // Get the repository name
+        linesOfCode: calculatedLines(commit),
+        copilotUsed: commit.message.includes("[Copilot]")
+       
       }));
 
     // If no commits remain after filtering, skip sending to Monday.com
@@ -50,13 +53,16 @@ async function sendCommitsToMonday(commits) {
     // Format timestamp to only include date (e.g., 2023-10-03)
     const formattedTimestamp = commit.timestamp.split('T')[0];
 
+    // Determine Co-pilot (AI) Activity text based on is_copilot
+    const copilotActivity = commit.is_copilot ? "Yes" : "No";
+
     // GraphQL mutation query to create an item on the Monday.com board
     const query = `
       mutation {
         create_item (
           board_id: ${boardId},
           item_name: "${commit.message}",
-          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text6__1\\": \\"${commit.username}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\"}"
+          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text6__1\\": \\"${commit.username}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\", \\"text10__1\\": \\"${commit.copilotUsed ? 'Yes' : 'No'}\\", \\"text9__1\\": \\"${commit.linesOfCode}\\"}"
         ) {
           id
         }
