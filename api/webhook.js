@@ -44,7 +44,7 @@ export default async function handler(req, res) {
   }
 }
 
-// Function to calculate lines of code for a given commit
+// Function to calculate lines of code for a given commits
 async function calculatedLines(commit) {
   const githubApiUrl = `${commit.url}`;
   const githubToken = process.env.GITHUB_TOKEN; // Ensure you have set this token in your environment variables
