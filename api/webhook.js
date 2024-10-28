@@ -1,35 +1,29 @@
-// Import necessary modules and fetch function
-import fetch from 'node-fetch';
-
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     const commitData = req.body;
 
-    // Validate if this is a push event, if not, exit
+    // Validate if this is a push event; if not, exit
     if (!commitData.ref || !commitData.commits) {
       return res.status(400).json({ error: 'Not a valid push event' });
     }
 
-    // Process each commit asynchronously to fetch additional details
-    const commits = await Promise.all(
-      commitData.commits
-        .filter(commit => commit.author.username !== 'Devtools') // Filter commits from Devtools repo
-        .map(async commit => {
-          // Fetch line changes (additions, deletions, total) for each commit
-          const { additions, deletions, totalChanges } = await fetchCommitDetails(commit.url);
-
-          return {
-            message: commit.message,
-            username: commit.author.username || commit.author.name,
-            author: commit.author.name,
-            url: commit.url,
-            timestamp: commit.timestamp,
-            repository: commitData.repository.name, // Get the repository name
-            additions,
-            deletions,
-            totalChanges
-          };
-        })
+    // Filter out Devtools-related commits and retrieve LOC for each commit
+    const commits = await Promise.all(commitData.commits
+      .filter(commit => commit.author.username !== 'Devtools') // Exclude commits by Devtools
+      .map(async (commit) => {
+        // Get LOC by fetching each commit's details
+        const locData = await getLocData(commit.url);
+        
+        return {
+          message: commit.message,
+          username: commit.author.username || commit.author.name,
+          author: commit.author.name,
+          url: commit.url,
+          timestamp: commit.timestamp,
+          repository: commitData.repository.name, // Repository name
+          loc: locData // Lines of Code
+        };
+      })
     );
 
     // If no commits remain after filtering, skip sending to Monday.com
@@ -50,19 +44,21 @@ export default async function handler(req, res) {
   }
 }
 
-// Helper function to fetch commit details (lines of code) from GitHub
-async function fetchCommitDetails(commitUrl) {
+// Helper function to retrieve LOC data for a commit from GitHub
+async function getLocData(commitUrl) {
   const response = await fetch(commitUrl, {
+    method: 'GET',
     headers: {
-      Authorization: `Bearer ${process.env.GITHUB_API_TOKEN}`
+      'Authorization': `Bearer ${process.env.GITHUB_API_TOKEN}`,
+      'Content-Type': 'application/json'
     }
   });
-  const commitData = await response.json();
-  return {
-    additions: commitData.stats.additions,
-    deletions: commitData.stats.deletions,
-    totalChanges: commitData.stats.total
-  };
+
+  const data = await response.json();
+  
+  // Sum the LOC by iterating over each file
+  const loc = data.files.reduce((acc, file) => acc + file.additions + file.deletions, 0);
+  return loc;
 }
 
 // Function to send commits data to Monday.com
@@ -78,13 +74,13 @@ async function sendCommitsToMonday(commits) {
     // Format timestamp to only include date (e.g., 2023-10-03)
     const formattedTimestamp = commit.timestamp.split('T')[0];
 
-    // GraphQL mutation query to create an item on the Monday.com board with lines of code
+    // GraphQL mutation query to create an item on the Monday.com board
     const query = `
       mutation {
         create_item (
           board_id: ${boardId},
           item_name: "${commit.message}",
-          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text6__1\\": \\"${commit.username}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\", \\"text80__1\\": \\"${commit.totalChanges}\\"}"
+          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text6__1\\": \\"${commit.username}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\", \\"text80__1\\": \\"${commit.loc}\\"}"
         ) {
           id
         }
