@@ -7,34 +7,48 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Not a valid push event' });
     }
 
-  // Extract and process each commit
-  const commits = await Promise.all(commitData.commits
+   // Extract and process each commit
+   const commits = await Promise.all(commitData.commits
     .filter(commit => commit.author.username !== 'Devtools')
     .map(async commit => {
-      // Fetch the full commit details from GitHub API to get LOC changes
-      const commitDetail = await fetch(`https://api.github.com/repos/${commitData.repository.full_name}/commits/${commit.id}`, {
-        headers: {
-          Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-          'Content-Type': 'application/json'
+      try {
+        // Fetch the full commit details from GitHub API to get LOC changes
+        const commitDetailResponse = await fetch(`https://api.github.com/repos/${commitData.repository.full_name}/commits/${commit.id}`, {
+          headers: {
+            Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!commitDetailResponse.ok) {
+          throw new Error(`Failed to fetch commit details for commit ${commit.id}`);
         }
-      }).then(res => res.json());
 
-      // Extract LOC additions and deletions from the response
-      const linesAdded = commitDetail.stats.additions;
-      const linesDeleted = commitDetail.stats.deletions;
+        const commitDetail = await commitDetailResponse.json();
 
-      return {
-        message: commit.message,
-        username: commit.author.username || commit.author.name,
-        author: commit.author.name,
-        url: commit.url,
-        timestamp: commit.timestamp,
-        repository: commitData.repository.name,
-        linesAdded,
-        linesDeleted
-      };
+        // Check if stats, additions, and deletions exist before accessing them
+        const linesAdded = commitDetail.stats?.additions || 0; // Default to 0 if undefined
+        const linesDeleted = commitDetail.stats?.deletions || 0; // Default to 0 if undefined
+
+        return {
+          message: commit.message,
+          username: commit.author.username || commit.author.name,
+          author: commit.author.name,
+          url: commit.url,
+          timestamp: commit.timestamp,
+          repository: commitData.repository.name,
+          linesAdded,
+          linesDeleted
+        };
+      } catch (error) {
+        console.error(`Error processing commit ${commit.id}:`, error);
+        return null; // Skip this commit if there's an error
+      }
     })
   );
+
+  // Filter out any null values from the commits array
+  const validCommits = commits.filter(commit => commit !== null);
 
     // If no commits remain after filtering, skip sending to Monday.com
     if (commits.length === 0) {
