@@ -39,7 +39,7 @@ export default async function handler(req, res) {
       const mondayResult = await sendCommitsToMonday(commitsWithLoc);
       res.status(200).json({ success: true, data: mondayResult });
     } catch (error) {
-      console.error('Error processing commits:', error);
+      console.error('Error processing commits:', error.message, error.stack);
       res.status(500).json({ error: 'Failed to process commits' });
     }
   } else {
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
 
 // Function to calculate LOC by fetching commit diff data
 async function getLinesOfCode(owner, repo, sha) {
-  const githubToken = process.env.GITHUB_TOKEN;
+  const githubToken = (process.env.GITHUB_TOKEN || "").trim();
   const url = `https://api.github.com/repos/${owner}/${repo}/commits/${sha}`;
 
   const response = await fetch(url, {
@@ -75,7 +75,7 @@ async function getLinesOfCode(owner, repo, sha) {
 // Function to send commits data to Monday.com
 async function sendCommitsToMonday(commits) {
   const mondayApiUrl = 'https://api.monday.com/v2';
-  const mondayApiKey = process.env.MONDAY_API_TOKEN;
+  const mondayApiKey = (process.env.MONDAY_API_TOKEN || "").trim();
   const boardId = process.env.MONDAY_BOARD_ID;
 
   const results = [];
@@ -115,3 +115,6 @@ async function sendCommitsToMonday(commits) {
 
   return results;
 }
+
+console.log("GitHub Token:", githubToken);
+console.log("Monday API Key:", mondayApiKey);
