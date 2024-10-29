@@ -17,13 +17,24 @@ export default async function handler(req, res) {
         url: commit.url,
         timestamp: commit.timestamp,
         repository: commitData.repository.name, // Get the repository name
-        linesOfCode: commit.stats.total
       }));
 
     // If no commits remain after filtering, skip sending to Monday.com
     if (commits.length === 0) {
       return res.status(200).json({ message: 'No valid commits to process' });
     }
+
+    // Fetch lines of code for each commit
+    try {
+      await Promise.all(commits.map(async (commit) => {
+        const stats = await fetchCommitStats(commit.url); // Fetch lines of code stats
+        commit.linesOfCode = stats.total; // Assign the total lines changed
+      }));
+    } catch (error) {
+      console.error('Error fetching commit stats:', error);
+      return res.status(500).json({ error: 'Failed to fetch commit stats' });
+    }
+
 
     // Send the commits to Monday.com
     try {
@@ -36,6 +47,16 @@ export default async function handler(req, res) {
   } else {
     res.status(405).json({ message: 'Only POST requests are accepted' });
   }
+}
+
+// Function to fetch commit stats from GitHub API
+async function fetchCommitStats(commitUrl) {
+  const response = await fetch(commitUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch commit stats: ${response.statusText}`);
+  }
+  const data = await response.json();
+  return data.stats; // Assuming stats is the structure you need
 }
 
 // Function to send commits data to Monday.com
@@ -64,17 +85,6 @@ async function sendCommitsToMonday(commits) {
       }
     `;
 
-    const fetchCommitStats = async (commitUrl) => {
-      const response = await fetch(commitUrl);
-      const data = await response.json();
-      return data.stats; // Assuming stats is the structure you need
-    };
-    
-    // Call this function in your commit loop to get lines of code
-    for (const commit of commits) {
-      const stats = await fetchCommitStats(commit.url); // Adjust this based on how you get commit stats
-      commit.linesOfCode = stats.total; // Assign the total lines changed
-    }
 
     // Send the request to the Monday.com API
     const response = await fetch(mondayApiUrl, {
