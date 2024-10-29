@@ -17,6 +17,7 @@ export default async function handler(req, res) {
         url: commit.url,
         timestamp: commit.timestamp,
         repository: commitData.repository.name, // Get the repository name
+        linesOfCode: commit.stats.total
       }));
 
     // If no commits remain after filtering, skip sending to Monday.com
@@ -56,12 +57,24 @@ async function sendCommitsToMonday(commits) {
         create_item (
           board_id: ${boardId},
           item_name: "${commit.message}",
-          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text6__1\\": \\"${commit.username}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\"}"
+          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text6__1\\": \\"${commit.username}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\", \\"text_1__1\\": \\"${commit.linesOfCode}\\"}"
         ) {
           id
         }
       }
     `;
+
+    const fetchCommitStats = async (commitUrl) => {
+      const response = await fetch(commitUrl);
+      const data = await response.json();
+      return data.stats; // Assuming stats is the structure you need
+    };
+    
+    // Call this function in your commit loop to get lines of code
+    for (const commit of commits) {
+      const stats = await fetchCommitStats(commit.url); // Adjust this based on how you get commit stats
+      commit.linesOfCode = stats.total; // Assign the total lines changed
+    }
 
     // Send the request to the Monday.com API
     const response = await fetch(mondayApiUrl, {
