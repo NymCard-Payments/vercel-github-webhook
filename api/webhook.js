@@ -49,7 +49,12 @@ export default async function handler(req, res) {
 
 // Function to calculate LOC by fetching commit diff data
 async function getLinesOfCode(owner, repo, sha) {
-  const githubToken = (process.env.GITHUB_TOKEN || "").trim();
+  
+  const githubToken = process.env.GITHUB_TOKEN || "undefined";
+if (githubToken === "undefined") {
+  console.error("GITHUB_TOKEN is not set in environment variables.");
+}
+
   const url = `https://api.github.com/repos/${owner}/${repo}/commits/${sha}`;
 
   const response = await fetch(url, {
