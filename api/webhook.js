@@ -2,29 +2,39 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const commitData = req.body;
 
-    // Validate if this is a push event; if not, exit
+    // Validate if this is a push event, if not, exit
     if (!commitData.ref || !commitData.commits) {
       return res.status(400).json({ error: 'Not a valid push event' });
     }
 
-    // Filter out Devtools-related commits and retrieve LOC for each commit
-    const commits = await Promise.all(commitData.commits
-      .filter(commit => commit.author.username !== 'Devtools') // Exclude commits by Devtools
-      .map(async (commit) => {
-        // Get LOC by fetching each commit's details
-        const locData = await getLocData(commit.url);
-        
-        return {
-          message: commit.message,
-          username: commit.author.username || commit.author.name,
-          author: commit.author.name,
-          url: commit.url,
-          timestamp: commit.timestamp,
-          repository: commitData.repository.name, // Repository name
-          loc: locData // Lines of Code
-        };
-      })
-    );
+  // Extract and process each commit
+  const commits = await Promise.all(commitData.commits
+    .filter(commit => commit.author.username !== 'Devtools')
+    .map(async commit => {
+      // Fetch the full commit details from GitHub API to get LOC changes
+      const commitDetail = await fetch(`https://api.github.com/repos/${commitData.repository.full_name}/commits/${commit.id}`, {
+        headers: {
+          Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      }).then(res => res.json());
+
+      // Extract LOC additions and deletions from the response
+      const linesAdded = commitDetail.stats.additions;
+      const linesDeleted = commitDetail.stats.deletions;
+
+      return {
+        message: commit.message,
+        username: commit.author.username || commit.author.name,
+        author: commit.author.name,
+        url: commit.url,
+        timestamp: commit.timestamp,
+        repository: commitData.repository.name,
+        linesAdded,
+        linesDeleted
+      };
+    })
+  );
 
     // If no commits remain after filtering, skip sending to Monday.com
     if (commits.length === 0) {
@@ -42,23 +52,6 @@ export default async function handler(req, res) {
   } else {
     res.status(405).json({ message: 'Only POST requests are accepted' });
   }
-}
-
-// Helper function to retrieve LOC data for a commit from GitHub
-async function getLocData(commitUrl) {
-  const response = await fetch(commitUrl, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${process.env.GITHUB_API_TOKEN}`,
-      'Content-Type': 'application/json'
-    }
-  });
-
-  const data = await response.json();
-  
-  // Sum the LOC by iterating over each file
-  const loc = data.files.reduce((acc, file) => acc + file.additions + file.deletions, 0);
-  return loc;
 }
 
 // Function to send commits data to Monday.com
@@ -80,7 +73,7 @@ async function sendCommitsToMonday(commits) {
         create_item (
           board_id: ${boardId},
           item_name: "${commit.message}",
-          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text6__1\\": \\"${commit.username}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\", \\"text80__1\\": \\"${commit.loc}\\"}"
+          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text6__1\\": \\"${commit.username}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\,  \\"text80__1\\": \\"${commit.linesAdded}\\", \\"text_1__1\\": \\"${commit.linesDeleted}\\"}"
         ) {
           id
         }
@@ -104,3 +97,4 @@ async function sendCommitsToMonday(commits) {
 
   return results;
 }
+
