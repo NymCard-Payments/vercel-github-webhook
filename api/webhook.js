@@ -1,5 +1,3 @@
-const fetch = require('node-fetch');
-
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     const commitData = req.body;
@@ -9,11 +7,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Not a valid push event' });
     }
 
-    // Extract the necessary commit information and filter out Devtools-related commitss
+    // Extract the necessary commit information and filter out Devtools-related commits
     const commits = commitData.commits
       .filter(commit => commit.author.username !== 'Devtools') // Filter commits from Devtools repo
       .map(commit => ({
-        sha: commit.id, // Commit SHA to fetch LOC details
         message: commit.message,
         username: commit.author.username || commit.author.name,
         author: commit.author.name,
@@ -27,60 +24,23 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: 'No valid commits to process' });
     }
 
-    // Fetch LOC for each commit and prepare data for Monday.com
+    // Send the commits to Monday.com
     try {
-      const commitsWithLoc = await Promise.all(
-        commits.map(async commit => {
-          const loc = await getLinesOfCode(commitData.repository.owner.name, commitData.repository.name, commit.sha);
-          return { ...commit, loc };
-        })
-      );
-
-      const mondayResult = await sendCommitsToMonday(commitsWithLoc);
+      const mondayResult = await sendCommitsToMonday(commits);
       res.status(200).json({ success: true, data: mondayResult });
     } catch (error) {
-      console.error('Error processing commits:', error.message, error.stack);
-      res.status(500).json({ error: 'Failed to process commits' });
+      console.error('Error sending data to Monday.com:', error);
+      res.status(500).json({ error: 'Failed to send data to Monday.com' });
     }
   } else {
     res.status(405).json({ message: 'Only POST requests are accepted' });
   }
 }
 
-// Function to calculate LOC by fetching commit diff data
-async function getLinesOfCode(owner, repo, sha) {
-  
-  const githubToken = process.env.GITHUB_TOKEN || "undefined";
-if (githubToken === "undefined") {
-  console.error("GITHUB_TOKEN is not set in environment variables.");
-}
-
-  const url = `https://api.github.com/repos/${owner}/${repo}/commits/${sha}`;
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${githubToken}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    console.error(`Failed to fetch commit data for ${sha}`);
-    return 0;
-  }
-
-  const data = await response.json();
-  const additions = data.stats.additions || 0;
-  const deletions = data.stats.deletions || 0;
-  const loc = additions + deletions;
-
-  return loc;
-}
-
 // Function to send commits data to Monday.com
 async function sendCommitsToMonday(commits) {
   const mondayApiUrl = 'https://api.monday.com/v2';
-  const mondayApiKey = (process.env.MONDAY_API_TOKEN || "").trim();
+  const mondayApiKey = process.env.MONDAY_API_TOKEN;
   const boardId = process.env.MONDAY_BOARD_ID;
 
   const results = [];
@@ -96,7 +56,7 @@ async function sendCommitsToMonday(commits) {
         create_item (
           board_id: ${boardId},
           item_name: "${commit.message}",
-          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text6__1\\": \\"${commit.username}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\", \\"text_1__1\\": \\"${commit.loc}\\"}"
+          column_values: "{\\"text4__1\\": \\"${commit.author}\\", \\"text6__1\\": \\"${commit.username}\\", \\"text__1\\": \\"${commit.url}\\", \\"date__1\\": \\"${formattedTimestamp}\\", \\"text8__1\\": \\"${commit.repository}\\"}"
         ) {
           id
         }
@@ -121,5 +81,3 @@ async function sendCommitsToMonday(commits) {
   return results;
 }
 
-console.log("GitHub Token:", githubToken);
-console.log("Monday API Key:", mondayApiKey);
