@@ -9,7 +9,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Not a valid push event' });
     }
 
-    // Extract the necessary commit information and filter out Devtools-related commits
+    // Extract the necessary commit information and filter out Devtools-related commitss
     const commits = commitData.commits
       .filter(commit => commit.author.username !== 'Devtools') // Filter commits from Devtools repo
       .map(commit => ({
