@@ -1,6 +1,6 @@
+import fetch from 'node-fetch';
 
-import { exec } from 'child_process';
-
+// Webhook handler
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     const commitData = req.body;
@@ -14,8 +14,8 @@ export default async function handler(req, res) {
       commitData.commits
         .filter(commit => commit.author.username !== 'Devtools')
         .map(async commit => {
-          // Calculate lines of code added/removed for each commit
-          const loc = await calculateLOC(commit.id); // Assumes commit.id contains commit hash
+          // Calculate lines of code (LOC) for each commit using the GitHub API
+          const loc = await calculateLOC(commit.id, commitData.repository.owner.name, commitData.repository.name);
 
           return {
             message: commit.message,
@@ -24,11 +24,10 @@ export default async function handler(req, res) {
             url: commit.url,
             timestamp: commit.timestamp,
             repository: commitData.repository.name,
-            loc: loc
+            loc: loc,
           };
         })
     );
-
 
     // If no commits remain after filtering, skip sending to Monday.com
     if (commits.length === 0) {
@@ -48,22 +47,41 @@ export default async function handler(req, res) {
   }
 }
 
-// Function to calculate LOC for a given commit hash
-async function calculateLOC(commitHash) {
-  return new Promise((resolve, reject) => {
-    exec(`git show --stat ${commitHash}`, (error, stdout) => {
-      if (error) {
-        console.error('Error calculating LOC:', error);
-        return reject(0); // Return 0 if there's an error
-      }
+// Function to calculate LOC for a given commit hash using GitHub API
+async function calculateLOC(commitHash, repoOwner, repoName) {
+  const githubToken = process.env.GITHUB_TOKEN; // Create a GitHub token and set it in your environment variables
 
-      // Extract LOC from output
-      const added = (stdout.match(/\d+ insertions?/g) || []).reduce((sum, match) => sum + parseInt(match), 0);
-      const deleted = (stdout.match(/\d+ deletions?/g) || []).reduce((sum, match) => sum + parseInt(match), 0);
+  // Construct the API URL
+  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/commits/${commitHash}`;
 
-      resolve(added - deleted);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${githubToken}`,
+        'User-Agent': 'Vercel-Webhook',
+      },
     });
-  });
+
+    if (!response.ok) {
+      throw new Error(`GitHub API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // Parse the diff data
+    let additions = 0;
+    let deletions = 0;
+
+    data.files.forEach(file => {
+      additions += file.additions;
+      deletions += file.deletions;
+    });
+
+    return additions - deletions;
+  } catch (error) {
+    console.error('Error calculating LOC from GitHub API:', error);
+    return 0; // Default LOC if an error occurs
+  }
 }
 
 // Function to send commits data to Monday.com
@@ -109,4 +127,3 @@ async function sendCommitsToMonday(commits) {
 
   return results;
 }
-
