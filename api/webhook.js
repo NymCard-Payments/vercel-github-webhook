@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const commitData = req.body;
 
-    // Validate if this is a push event, if not, exit
+    // Validate if this is a push event, if not, exitt
     if (!commitData.ref || !commitData.commits) {
       return res.status(400).json({ error: 'Not a valid push event' });
     }
