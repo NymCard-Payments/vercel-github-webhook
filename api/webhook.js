@@ -9,7 +9,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Not a valid push event' });
     }
 
-    // Extract the necessary commit information and filter out Devtools-related commits
+    // Extract the necessary commit information and filter out Devtools-related commitss
     const commits = commitData.commits
       .filter(commit => commit.author.username !== 'Devtools') // Filter commits from Devtools repo
       .map(commit => ({
@@ -20,7 +20,6 @@ export default async function handler(req, res) {
         url: commit.url,
         timestamp: commit.timestamp,
         repository: commitData.repository.name, // Get the repository name
-        owner: commitData.repository.owner.name // Get the repository owner
       }));
 
     // If no commits remain after filtering, skip sending to Monday.com
@@ -32,7 +31,7 @@ export default async function handler(req, res) {
     try {
       const commitsWithLoc = await Promise.all(
         commits.map(async commit => {
-          const loc = await getLinesOfCode(commit.owner, commit.repository, commit.sha);
+          const loc = await getLinesOfCode(commitData.repository.owner.name, commitData.repository.name, commit.sha);
           return { ...commit, loc };
         })
       );
@@ -50,15 +49,14 @@ export default async function handler(req, res) {
 
 // Function to calculate LOC by fetching commit diff data
 async function getLinesOfCode(owner, repo, sha) {
-  const githubToken = process.env.GITHUB_TOKEN; // Use environment variable
-  if (!githubToken) {
-    console.error("GITHUB_TOKEN is not set in environment variables.");
-    return 0; // Return 0 if token is not available
-  }
+  
+  const githubToken = process.env.GITHUB_TOKEN || "undefined";
+if (githubToken === "undefined") {
+  console.error("GITHUB_TOKEN is not set in environment variables.");
+}
 
   const url = `https://api.github.com/repos/${owner}/${repo}/commits/${sha}`;
-  
-  // Fetch the commit data
+
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${githubToken}`,
@@ -67,18 +65,11 @@ async function getLinesOfCode(owner, repo, sha) {
   });
 
   if (!response.ok) {
-    console.error(`Failed to fetch commit data for ${sha}: ${response.statusText}`);
-    return 0; // Return 0 if fetching fails
+    console.error(`Failed to fetch commit data for ${sha}`);
+    return 0;
   }
 
   const data = await response.json();
-  
-  // Check if stats are present
-  if (!data.stats) {
-    console.error(`No stats found for commit ${sha}`);
-    return 0;
-  }
-  
   const additions = data.stats.additions || 0;
   const deletions = data.stats.deletions || 0;
   const loc = additions + deletions;
@@ -89,7 +80,7 @@ async function getLinesOfCode(owner, repo, sha) {
 // Function to send commits data to Monday.com
 async function sendCommitsToMonday(commits) {
   const mondayApiUrl = 'https://api.monday.com/v2';
-  const mondayApiKey = process.env.MONDAY_API_TOKEN || "";
+  const mondayApiKey = (process.env.MONDAY_API_TOKEN || "").trim();
   const boardId = process.env.MONDAY_BOARD_ID;
 
   const results = [];
@@ -115,9 +106,9 @@ async function sendCommitsToMonday(commits) {
     // Send the request to the Monday.com API
     const response = await fetch(mondayApiUrl, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${mondayApiKey}`,
-        'Content-Type': 'application/json',
+      headers: { 
+        Authorization: `Bearer ${mondayApiKey}`, 
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ query }),
     });
@@ -130,6 +121,5 @@ async function sendCommitsToMonday(commits) {
   return results;
 }
 
-// Debugging: Ensure that tokens are correctly set (remove in production)
-console.log("GitHub Token:", process.env.GITHUB_TOKEN ? "Set" : "Not Set");
-console.log("Monday API Key:", process.env.MONDAY_API_TOKEN ? "Set" : "Not Set");
+console.log("GitHub Token:", githubToken);
+console.log("Monday API Key:", mondayApiKey);
